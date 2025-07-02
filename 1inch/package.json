@@ -11,9 +11,14 @@
   "dependencies": {
     "@headlessui/react": "^2.2.4",
     "@heroicons/react": "^2.2.0",
+    "@rainbow-me/rainbowkit": "^2.2.8",
+    "@wagmi/core": "^2.17.3",
+    "ethers": "^6.15.0",
     "next": "15.3.4",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "viem": "^2.31.6",
+    "wagmi": "^2.15.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

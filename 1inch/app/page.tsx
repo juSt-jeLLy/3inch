@@ -2,59 +2,130 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { ArrowRightIcon, QuestionMarkCircleIcon, QrCodeIcon } from "@heroicons/react/24/outline";
+import { ArrowsUpDownIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import Navbar from "./components/Navbar";
+import { useWallet } from "./context/WalletContext";
+import { SUPPORTED_CHAINS } from "./config/wallets";
+import TokenModal, { Token } from "./components/TokenModal";
+import { useTokenBalance } from "./hooks/useTokenBalance";
 
-const tokens = [
+const tokens: Token[] = [
+  { 
+    id: 'monad', 
+    name: 'MON', 
+    fullName: 'Monad', 
+    icon: '/icons/monad.svg', 
+    network: 'MONAD NETWORK',
+    chainId: 10143
+  },
   { 
     id: 'eth', 
     name: 'ETH', 
     fullName: 'Ethereum', 
     icon: '/icons/eth.svg', 
-    network: 'ETHEREUM NETWORK',
-    price: '$2,439.41'
-  },
-  { 
-    id: 'sui', 
-    name: 'SUI', 
-    fullName: 'Sui', 
-    icon: '/icons/Sui_Symbol_Sea.svg', 
-    network: 'SUI NETWORK',
-    price: '$1.85'
-  },
-  { 
-    id: 'monad', 
-    name: 'MONAD', 
-    fullName: 'Monad', 
-    icon: '/icons/monad.svg', 
-    network: 'MONAD NETWORK',
-    price: '$0.05'
+    network: 'SEPOLIA NETWORK',
+    chainId: 11155111
   }
 ];
+
+// Helper function to format numbers
+const formatNumber = (num: string | number) => {
+  const value = typeof num === 'string' ? parseFloat(num) : num;
+  if (isNaN(value)) return '0.00000';
+  
+  // If number is less than 0.00001, show in scientific notation
+  if (value < 0.00001) {
+    return value.toExponential(4);
+  }
+  
+  // Otherwise show 5 decimal places max
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 5
+  });
+};
 
 export default function Home() {
   const [fromToken, setFromToken] = useState(tokens[0]);
   const [toToken, setToToken] = useState(tokens[1]);
   const [amount, setAmount] = useState('');
-  const [selectedRate, setSelectedRate] = useState('variable');
-  const [receivingAddress, setReceivingAddress] = useState('');
-  const [currentRate, setCurrentRate] = useState('0.0000');
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const [chainWarning, setChainWarning] = useState<string | null>(null);
+  const { isConnected, wallet, switchChain } = useWallet();
 
+  // Token selection modal states
+  const [isFromModalOpen, setIsFromModalOpen] = useState(false);
+  const [isToModalOpen, setIsToModalOpen] = useState(false);
+
+  // Get token balances
+  const { balance: fromBalance, isLoading: isFromBalanceLoading } = useTokenBalance(fromToken, wallet?.address);
+
+
+
+  // Check if the current chain matches the selected token's chain
   useEffect(() => {
-    setCurrentRate((Math.random() * 0.1).toFixed(4));
-    const interval = setInterval(() => {
-      setCurrentRate((Math.random() * 0.1).toFixed(4));
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [fromToken.id, toToken.id]);
+    if (isConnected && wallet) {
+      if (wallet.chainId !== fromToken.chainId) {
+        setChainWarning(`Please switch to ${fromToken.network} to proceed with the swap`);
+      } else {
+        setChainWarning(null);
+      }
+    }
+  }, [isConnected, wallet?.chainId, fromToken]);
+
+  // Token selection handlers
+  const handleFromTokenSelect = async (token: Token) => {
+    if (token.id === toToken.id) {
+      // If selected token is the same as toToken, swap them
+      setToToken(fromToken);
+    }
+    setFromToken(token);
+    
+    // Automatically switch network if needed
+    if (wallet?.chainId !== token.chainId) {
+      try {
+        await switchChain(token.chainId);
+      } catch (error: any) {
+        setChainWarning(`Failed to switch to ${token.network}: ${error.message}`);
+      }
+    }
+  };
+
+  const handleToTokenSelect = (token: Token) => {
+    if (token.id === fromToken.id) {
+      // If selected token is the same as fromToken, swap them
+      setFromToken(toToken);
+    }
+    setToToken(token);
+  };
+
+  // Handle token swap direction
+  const handleSwapTokens = async () => {
+    const newFromToken = toToken;
+    const newToToken = fromToken;
+    
+    setFromToken(newFromToken);
+    setToToken(newToToken);
+    setAmount('');
+
+    // Automatically switch network if needed
+    if (wallet?.chainId !== newFromToken.chainId) {
+      try {
+        await switchChain(newFromToken.chainId);
+      } catch (error: any) {
+        setChainWarning(`Failed to switch to ${newFromToken.network}: ${error.message}`);
+      }
+    }
+  };
+
+  // Calculate estimated output
+  const calculateOutput = () => {
+    if (!amount) return '0.00000';
+    return formatNumber(amount);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1a1a1a] via-[#242424] to-[#1a1a1a] text-white font-mono">
-      <Navbar 
-        isWalletConnected={isWalletConnected}
-        onWalletConnect={setIsWalletConnected}
-      />
+      <Navbar />
 
       <div className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
@@ -68,137 +139,158 @@ export default function Home() {
             </p>
           </div>
 
+          {/* Chain Warning */}
+          {chainWarning && (
+            <div className="mb-6 p-4 bg-yellow-900/50 border border-yellow-600/50 rounded-xl text-yellow-500 flex justify-between items-center">
+              <span>{chainWarning}</span>
+              <button
+                onClick={() => switchChain(fromToken.chainId)}
+                className="px-4 py-2 bg-yellow-600/20 hover:bg-yellow-600/30 rounded-lg transition-colors duration-300"
+              >
+                Switch Network
+              </button>
+            </div>
+          )}
+
           {/* Main Card */}
           <div className="relative bg-black/40 backdrop-blur-xl rounded-2xl p-8 border border-[#ffd700]/10 shadow-xl hover:shadow-2xl hover:shadow-[#ffd700]/10 transition-all duration-500">
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#ffd700]/5 via-transparent to-[#ffd700]/5 opacity-50"></div>
             
-            {/* Rate Toggle */}
-            <div className="relative flex gap-8 mb-8">
-              <button 
-                onClick={() => setSelectedRate('variable')}
-                className={`pb-2 border-b-2 transition-all duration-300 ${
-                  selectedRate === 'variable' 
-                    ? 'border-[#ffd700] text-[#ffd700] scale-105' 
-                    : 'border-transparent text-gray-500 hover:text-[#ffd700]/70'
-                }`}
-              >
-                VARIABLE RATE
-              </button>
-              <button 
-                onClick={() => setSelectedRate('fixed')}
-                className={`pb-2 border-b-2 transition-all duration-300 ${
-                  selectedRate === 'fixed' 
-                    ? 'border-[#ffd700] text-[#ffd700] scale-105' 
-                    : 'border-transparent text-gray-500 hover:text-[#ffd700]/70'
-                }`}
-              >
-                FIXED RATE
-              </button>
-              <div className="flex-grow text-right">
-                <span className="text-[#ffd700] animate-pulse">
-                  1 {fromToken.name} ≈ {currentRate} {toToken.name}
-                </span>
-              </div>
-            </div>
+
 
             {/* Exchange Cards */}
-            <div className="relative grid grid-cols-2 gap-6 mb-8">
+            <div className="relative space-y-3">
               {/* From Token */}
-              <div className="group bg-black/50 rounded-xl p-6 border border-[#ffd700]/10 hover:border-[#ffd700]/30 transition-all duration-300 hover:shadow-lg hover:shadow-[#ffd700]/10">
-                <div className="text-gray-400 mb-4">YOU SEND</div>
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-[#ffd700]/20 rounded-full blur-md group-hover:blur-lg transition-all duration-300"></div>
-                    <Image 
-                      src={fromToken.icon} 
-                      alt={fromToken.name} 
-                      width={48} 
-                      height={48}
-                      className="relative transform group-hover:scale-110 transition-transform duration-300"
+              <div className="bg-black/50 rounded-xl p-6 border border-[#ffd700]/10">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-gray-400">YOU SEND</span>
+                  <span className="text-gray-400">
+                    Balance: {isFromBalanceLoading ? '...' : formatNumber(fromBalance)} {fromToken.name}
+                  </span>
+                </div>
+                <div className="flex gap-4 items-center">
+                  <button 
+                    onClick={() => setIsFromModalOpen(true)}
+                    className="flex items-center gap-3 px-6 py-3 bg-black/30 rounded-xl hover:bg-black/40 transition-colors duration-200 min-w-[160px]"
+                  >
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-[#ffd700]/20 rounded-full blur-md"></div>
+                      <Image 
+                        src={fromToken.icon} 
+                        alt={fromToken.name} 
+                        width={32} 
+                        height={32}
+                        className="relative"
+                      />
+                    </div>
+                    <span className="font-bold text-[#ffd700] text-lg">{fromToken.name}</span>
+                    <ChevronDownIcon className="h-5 w-5 text-[#ffd700] ml-auto" />
+                  </button>
+                  <div className="flex-grow">
+                    <input
+                      type="number"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="0.00000"
+                      className="w-full bg-transparent text-2xl font-bold text-white placeholder-gray-600 focus:outline-none text-right"
                     />
                   </div>
-                  <div>
-                    <div className="text-2xl font-bold text-[#ffd700] group-hover:text-[#ffed4a] transition-colors duration-300">
-                      {fromToken.name}
-                    </div>
-                    <div className="text-gray-400">{fromToken.fullName}</div>
-                  </div>
-                </div>
-                <div className="bg-[#ffd700]/10 text-sm px-4 py-2 rounded-lg text-[#ffd700] group-hover:bg-[#ffd700]/20 transition-all duration-300">
-                  {fromToken.network}
+                  <button
+                    onClick={() => setAmount(fromBalance)}
+                    className="px-4 py-2 text-sm bg-[#ffd700]/10 hover:bg-[#ffd700]/20 text-[#ffd700] rounded-lg transition-colors duration-200"
+                  >
+                    MAX
+                  </button>
                 </div>
               </div>
 
-              {/* Arrow */}
-              <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-                <div className="relative bg-black/50 rounded-full p-3 border border-[#ffd700]/20 hover:border-[#ffd700]/40 transition-all duration-300 hover:scale-110 cursor-pointer group">
+              {/* Swap Arrow */}
+              <div className="flex justify-center -my-3 relative z-10">
+                <button 
+                  onClick={handleSwapTokens}
+                  className="relative bg-black/50 rounded-full p-3 border border-[#ffd700]/20 hover:border-[#ffd700]/40 transition-all duration-300 hover:scale-110 cursor-pointer group"
+                >
                   <div className="absolute inset-0 bg-[#ffd700]/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <ArrowRightIcon className="h-6 w-6 text-[#ffd700] relative" />
-                </div>
+                  <ArrowsUpDownIcon className="h-6 w-6 text-[#ffd700] relative" />
+                </button>
               </div>
 
               {/* To Token */}
-              <div className="group bg-black/50 rounded-xl p-6 border border-[#ffd700]/10 hover:border-[#ffd700]/30 transition-all duration-300 hover:shadow-lg hover:shadow-[#ffd700]/10">
-                <div className="text-gray-400 mb-4">YOU RECEIVE</div>
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-[#ffd700]/20 rounded-full blur-md group-hover:blur-lg transition-all duration-300"></div>
-                    <Image 
-                      src={toToken.icon} 
-                      alt={toToken.name} 
-                      width={48} 
-                      height={48}
-                      className="relative transform group-hover:scale-110 transition-transform duration-300"
-                    />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-[#ffd700] group-hover:text-[#ffed4a] transition-colors duration-300">
-                      {toToken.name}
+              <div className="bg-black/50 rounded-xl p-6 border border-[#ffd700]/10">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-gray-400">YOU RECEIVE</span>
+                </div>
+                <div className="flex gap-4 items-center">
+                  <button
+                    onClick={() => setIsToModalOpen(true)}
+                    className="flex items-center gap-3 px-6 py-3 bg-black/30 rounded-xl hover:bg-black/40 transition-colors duration-200 min-w-[160px]"
+                  >
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-[#ffd700]/20 rounded-full blur-md"></div>
+                      <Image 
+                        src={toToken.icon} 
+                        alt={toToken.name} 
+                        width={32} 
+                        height={32}
+                        className="relative"
+                      />
                     </div>
-                    <div className="text-gray-400">{toToken.fullName}</div>
+                    <span className="font-bold text-[#ffd700] text-lg">{toToken.name}</span>
+                    <ChevronDownIcon className="h-5 w-5 text-[#ffd700] ml-auto" />
+                  </button>
+                  <div className="flex-grow">
+                    <div className="text-2xl font-bold text-white text-right">
+                      {calculateOutput()}
+                    </div>
                   </div>
                 </div>
-                <div className="bg-[#ffd700]/10 text-sm px-4 py-2 rounded-lg text-[#ffd700] group-hover:bg-[#ffd700]/20 transition-all duration-300">
-                  {toToken.network}
-                </div>
-              </div>
-            </div>
-
-            {/* Receiving Address */}
-            <div className="mb-8">
-              <div className="text-gray-400 mb-2">RECEIVING ADDRESS</div>
-              <div className="relative group">
-                <input
-                  type="text"
-                  value={receivingAddress}
-                  onChange={(e) => setReceivingAddress(e.target.value)}
-                  placeholder={`Your ${toToken.name} address`}
-                  className="w-full bg-black/50 border border-[#ffd700]/10 rounded-xl py-4 px-4 text-white placeholder-gray-500 focus:outline-none focus:border-[#ffd700]/30 transition-all duration-300"
-                />
-                <button className="absolute right-3 top-1/2 transform -translate-y-1/2 hover:scale-110 transition-transform duration-300">
-                  <QrCodeIcon className="h-6 w-6 text-[#ffd700]" />
-                </button>
-                <div className="absolute inset-0 border border-[#ffd700]/0 rounded-xl group-hover:border-[#ffd700]/20 transition-all duration-300"></div>
               </div>
             </div>
 
             {/* Swap Button */}
             <button
-              disabled={!receivingAddress || !isWalletConnected}
-              className={`relative w-full py-4 rounded-xl text-center font-bold text-lg transition-all duration-300 ${
-                receivingAddress && isWalletConnected
+              disabled={!isConnected || !!chainWarning || !amount || parseFloat(amount) <= 0}
+              className={`relative w-full py-4 rounded-xl text-center font-bold text-lg transition-all duration-300 mt-8 ${
+                isConnected && !chainWarning && amount && parseFloat(amount) > 0
                   ? 'bg-gradient-to-r from-[#ffd700] via-[#ffed4a] to-[#ffd700] text-black hover:shadow-lg hover:shadow-[#ffd700]/20 hover:scale-[1.02]'
                   : 'bg-gray-600/50 text-gray-400 cursor-not-allowed'
               }`}
             >
-              <span className="relative z-10">SWAP NOW</span>
-              {receivingAddress && isWalletConnected && (
+              <span className="relative z-10">
+                {!isConnected 
+                  ? 'CONNECT WALLET'
+                  : chainWarning
+                  ? 'WRONG NETWORK'
+                  : !amount || parseFloat(amount) <= 0
+                  ? 'ENTER AMOUNT'
+                  : 'SWAP NOW'
+                }
+              </span>
+              {isConnected && !chainWarning && amount && parseFloat(amount) > 0 && (
                 <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#ffd700] via-[#ffed4a] to-[#ffd700] opacity-50 blur-lg transition-opacity duration-300 hover:opacity-100"></div>
               )}
             </button>
           </div>
         </div>
       </div>
+
+      {/* Token Selection Modals */}
+      <TokenModal
+        isOpen={isFromModalOpen}
+        onClose={() => setIsFromModalOpen(false)}
+        onSelect={handleFromTokenSelect}
+        tokens={tokens}
+        selectedToken={fromToken}
+        otherSelectedToken={toToken}
+      />
+      <TokenModal
+        isOpen={isToModalOpen}
+        onClose={() => setIsToModalOpen(false)}
+        onSelect={handleToTokenSelect}
+        tokens={tokens}
+        selectedToken={toToken}
+        otherSelectedToken={fromToken}
+      />
     </div>
   );
 }
