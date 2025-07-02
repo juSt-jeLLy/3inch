@@ -10,14 +10,7 @@ import TokenModal, { Token } from "./components/TokenModal";
 import { useTokenBalance } from "./hooks/useTokenBalance";
 
 const tokens: Token[] = [
-  { 
-    id: 'monad', 
-    name: 'MON', 
-    fullName: 'Monad', 
-    icon: '/icons/monad.svg', 
-    network: 'MONAD NETWORK',
-    chainId: 10143
-  },
+  
   { 
     id: 'eth', 
     name: 'ETH', 
@@ -25,23 +18,29 @@ const tokens: Token[] = [
     icon: '/icons/eth.svg', 
     network: 'SEPOLIA NETWORK',
     chainId: 11155111
+  },
+  { 
+    id: 'monad', 
+    name: 'MON', 
+    fullName: 'Monad', 
+    icon: '/icons/monad.svg', 
+    network: 'MONAD NETWORK',
+    chainId: 10143
   }
 ];
 
 // Helper function to format numbers
 const formatNumber = (num: string | number) => {
   const value = typeof num === 'string' ? parseFloat(num) : num;
-  if (isNaN(value)) return '0.00000';
+  if (isNaN(value)) return '0.0000';
   
-  // If number is less than 0.00001, show in scientific notation
-  if (value < 0.00001) {
-    return value.toExponential(4);
-  }
+  // If value is zero, return with 4 decimals
+  if (value === 0) return '0.0000';
   
-  // Otherwise show 5 decimal places max
+  // Format the number with exactly 4 decimal places
   return value.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 5
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4
   });
 };
 
@@ -74,8 +73,8 @@ export default function Home() {
 
   // Token selection handlers
   const handleFromTokenSelect = async (token: Token) => {
+    // If selected token is the same as toToken, swap them
     if (token.id === toToken.id) {
-      // If selected token is the same as toToken, swap them
       setToToken(fromToken);
     }
     setFromToken(token);
@@ -91,8 +90,8 @@ export default function Home() {
   };
 
   const handleToTokenSelect = (token: Token) => {
+    // If selected token is the same as fromToken, swap them
     if (token.id === fromToken.id) {
-      // If selected token is the same as fromToken, swap them
       setFromToken(toToken);
     }
     setToToken(token);

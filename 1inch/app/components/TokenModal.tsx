@@ -29,7 +29,7 @@ export default function TokenModal({
   onSelect,
   tokens,
   selectedToken,
-  otherSelectedToken,
+  otherSelectedToken, // This prop won't be used for disabling anymore
 }: TokenModalProps) {
   const handleSelect = (token: Token) => {
     onSelect(token);
@@ -77,18 +77,14 @@ export default function TokenModal({
 
                 <div className="space-y-2">
                   {tokens.map((token) => {
-                    const isDisabled = token.id === otherSelectedToken?.id;
                     const isSelected = token.id === selectedToken?.id;
 
                     return (
                       <button
                         key={token.id}
-                        onClick={() => !isDisabled && handleSelect(token)}
-                        disabled={isDisabled}
+                        onClick={() => handleSelect(token)}
                         className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 ${
-                          isDisabled
-                            ? 'opacity-50 cursor-not-allowed bg-gray-800/20'
-                            : isSelected
+                          isSelected
                             ? 'bg-[#ffd700]/20 border border-[#ffd700]/30'
                             : 'hover:bg-[#ffd700]/10 border border-transparent'
                         }`}
