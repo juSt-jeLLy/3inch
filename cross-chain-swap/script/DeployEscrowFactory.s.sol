@@ -28,7 +28,7 @@ contract DeployEscrowFactory is Script {
         FEE_TOKEN[59144] = 0x4AF15ec2A0BD43Db75dd04E62FAA3B8EF36b00d5; // Linea (DAI)
         FEE_TOKEN[146] = 0x29219dd400f2Bf60E5a23d13Be72B486D4038894; // Sonic (USDC)
         FEE_TOKEN[130] = 0x20CAb320A855b39F724131C69424240519573f81; // Unichain (DAI)
-        FEE_TOKEN[10143] = address(new ERC20True()); // Monad testnet (mock DAI for testing)
+        FEE_TOKEN[10143] =0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701; // Monad testnet (USDC)
 
         address deployer = vm.envAddress("DEPLOYER_ADDRESS");
         address feeBankOwner = deployer;

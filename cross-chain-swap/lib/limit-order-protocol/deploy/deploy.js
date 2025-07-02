@@ -4,6 +4,7 @@ const { getChainId, network } = hre;
 const wethByNetwork = {
     hardhat: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
     mainnet: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    monad: '0x4200000000000000000000000000000000000006', // Monad WETH
 };
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
@@ -27,5 +28,3 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         });
     }
 };
-
-module.exports.skip = async () => true;

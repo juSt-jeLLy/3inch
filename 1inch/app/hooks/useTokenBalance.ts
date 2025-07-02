@@ -20,6 +20,7 @@ export function useTokenBalance(token: Token, walletAddress: string | undefined)
         
         // Only fetch balance if we're on the correct network for the token
         if (currentChainId === token.chainId) {
+          // For native tokens (ETH/MON), use getBalance
           const balance = await provider.getBalance(walletAddress);
           setBalance(ethers.formatEther(balance));
         } else {

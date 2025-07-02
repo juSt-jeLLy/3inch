@@ -10,7 +10,6 @@ import TokenModal, { Token } from "./components/TokenModal";
 import { useTokenBalance } from "./hooks/useTokenBalance";
 
 const tokens: Token[] = [
-  
   { 
     id: 'eth', 
     name: 'ETH Sepolia', 
