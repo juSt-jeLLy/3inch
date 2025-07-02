@@ -138,7 +138,30 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   };
 
   const switchChain = async (chainId: number) => {
-    if (!wallet) throw new Error('Wallet not connected');
+    if (!window.ethereum) {
+      throw new Error('Please install MetaMask!');
+    }
+
+    if (!wallet) {
+      // If wallet is not connected, try to connect first
+      try {
+        const accounts = await window.ethereum.request({
+          method: 'eth_requestAccounts'
+        });
+        
+        if (accounts.length === 0) {
+          throw new Error('Please connect your wallet first');
+        }
+
+        // Set wallet state with the connected account
+        setWallet({
+          address: accounts[0],
+          chainId: parseInt(await window.ethereum.request({ method: 'eth_chainId' }), 16)
+        });
+      } catch (error: any) {
+        throw new Error('Failed to connect wallet: ' + error.message);
+      }
+    }
 
     const chain = SUPPORTED_CHAINS.find(c => c.chainId === chainId);
     if (!chain) throw new Error('Unsupported chain');

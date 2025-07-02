@@ -37,14 +37,14 @@ export default function Navbar() {
           <div className="flex items-center space-x-4">
             {isConnected && <NetworkSelector />}
             <div className="relative" ref={dropdownRef}>
-              <button
+          <button
                 onClick={() => isConnected ? setIsDropdownOpen(!isDropdownOpen) : openModal()}
-                onMouseEnter={() => setIsHovering(true)}
-                onMouseLeave={() => setIsHovering(false)}
-                className="group relative px-6 py-2 rounded-xl bg-gradient-to-r from-[#ffd700] via-[#ffed4a] to-[#ffd700] text-black font-bold hover:shadow-lg hover:shadow-[#ffd700]/20 transition-all duration-300 hover:scale-105"
-              >
-                <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#ffd700] via-[#ffed4a] to-[#ffd700] opacity-50 blur-lg transition-opacity duration-300 group-hover:opacity-100"></span>
-                <span className="relative flex items-center">
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
+            className="group relative px-6 py-2 rounded-xl bg-gradient-to-r from-[#ffd700] via-[#ffed4a] to-[#ffd700] text-black font-bold hover:shadow-lg hover:shadow-[#ffd700]/20 transition-all duration-300 hover:scale-105"
+          >
+            <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#ffd700] via-[#ffed4a] to-[#ffd700] opacity-50 blur-lg transition-opacity duration-300 group-hover:opacity-100"></span>
+            <span className="relative flex items-center">
                   {isConnected ? (
                     <>
                       {currentChain && (
@@ -61,12 +61,12 @@ export default function Navbar() {
                     </>
                   ) : (
                     <>
-                      <WalletIcon className={`h-5 w-5 mr-2 transition-transform duration-300 ${isHovering ? 'rotate-12' : ''}`} />
+              <WalletIcon className={`h-5 w-5 mr-2 transition-transform duration-300 ${isHovering ? 'rotate-12' : ''}`} />
                       Connect Wallet
                     </>
                   )}
-                </span>
-              </button>
+            </span>
+          </button>
 
               {/* Dropdown Menu */}
               {isDropdownOpen && isConnected && (

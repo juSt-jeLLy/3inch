@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { ArrowsUpDownIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import Navbar from "./components/Navbar";
 import { useWallet } from "./context/WalletContext";
-import { SUPPORTED_CHAINS } from "./config/wallets";
+
 import TokenModal, { Token } from "./components/TokenModal";
 import { useTokenBalance } from "./hooks/useTokenBalance";
 
@@ -189,9 +189,19 @@ export default function Home() {
                     <input
                       type="number"
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      placeholder="0.00000"
-                      className="w-full bg-transparent text-2xl font-bold text-white placeholder-gray-600 focus:outline-none text-right"
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Don't allow negative numbers
+                        if (value.startsWith('-')) return;
+                        // Don't allow more than max balance
+                        if (parseFloat(value) > parseFloat(fromBalance)) return;
+                        setAmount(value);
+                      }}
+                      min="0"
+                      max={fromBalance}
+                      step="any"
+                      placeholder="0.0000"
+                      className="w-full bg-transparent text-2xl font-bold text-white placeholder-gray-600 focus:outline-none text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
                   <button

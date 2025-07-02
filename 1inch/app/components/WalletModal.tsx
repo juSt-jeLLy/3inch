@@ -20,17 +20,31 @@ export default function WalletModal() {
 
   const handleConnect = async (wallet: { name: string }) => {
     try {
+      // First connect the wallet
       await connectWallet(wallet);
+      
+      // After successful connection, check and switch chain if needed
       if (window.ethereum) {
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-        const currentChainId = parseInt(chainId, 16);
-        
-        // Check if current chain is supported
-        const isSupported = SUPPORTED_CHAINS.some(chain => chain.chainId === currentChainId);
-        
-        if (!isSupported) {
-          // Default to Sepolia if current chain is not supported
-          await switchChain(SUPPORTED_CHAINS[0].chainId);
+        try {
+          const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+          const currentChainId = parseInt(chainId, 16);
+          
+          // Check if current chain is supported
+          const isSupported = SUPPORTED_CHAINS.some(chain => chain.chainId === currentChainId);
+          
+          if (!isSupported) {
+            // Wait a bit before switching chain to ensure wallet is properly connected
+            setTimeout(async () => {
+              try {
+                // Default to Sepolia if current chain is not supported
+                await switchChain(SUPPORTED_CHAINS[0].chainId);
+              } catch (switchError) {
+                console.error('Chain switch error:', switchError);
+              }
+            }, 500);
+          }
+        } catch (chainError) {
+          console.error('Chain check error:', chainError);
         }
       }
     } catch (err) {
