@@ -13,7 +13,7 @@ const tokens: Token[] = [
   
   { 
     id: 'eth', 
-    name: 'ETH', 
+    name: 'ETH Sepolia', 
     fullName: 'Ethereum', 
     icon: '/icons/eth.svg', 
     network: 'SEPOLIA NETWORK',
