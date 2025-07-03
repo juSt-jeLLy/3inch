@@ -8,6 +8,7 @@ import { useWallet } from "./context/WalletContext";
 
 import TokenModal, { Token } from "./components/TokenModal";
 import { useTokenBalance } from "./hooks/useTokenBalance";
+import { useSwap, SwapStatus } from './hooks/useSwap';
 
 const tokens: Token[] = [
   { 
@@ -57,7 +58,7 @@ export default function Home() {
   // Get token balances
   const { balance: fromBalance, isLoading: isFromBalanceLoading } = useTokenBalance(fromToken, wallet?.address);
 
-
+  const { swap, error: swapError, status: swapStatus, statusMessage } = useSwap();
 
   // Check if the current chain matches the selected token's chain
   useEffect(() => {
@@ -119,6 +120,18 @@ export default function Home() {
   const calculateOutput = () => {
     if (!amount) return '0.00000';
     return formatNumber(amount);
+  };
+
+  const handleSwapClick = async () => {
+    if (!isConnected || chainWarning || !amount || parseFloat(amount) <= 0) {
+      return;
+    }
+
+    try {
+      await swap(fromToken, toToken, amount);
+    } catch (err) {
+      console.error('Swap failed:', err);
+    }
   };
 
   return (
@@ -255,11 +268,19 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Swap Error */}
+            {swapError && (
+              <div className="mb-6 p-4 bg-red-900/50 border border-red-600/50 rounded-xl text-red-500">
+                {swapError}
+              </div>
+            )}
+
             {/* Swap Button */}
             <button
-              disabled={!isConnected || !!chainWarning || !amount || parseFloat(amount) <= 0}
+              onClick={handleSwapClick}
+              disabled={!isConnected || !!chainWarning || !amount || parseFloat(amount) <= 0 || swapStatus !== SwapStatus.IDLE}
               className={`relative w-full py-4 rounded-xl text-center font-bold text-lg transition-all duration-300 mt-8 ${
-                isConnected && !chainWarning && amount && parseFloat(amount) > 0
+                isConnected && !chainWarning && amount && parseFloat(amount) > 0 && swapStatus === SwapStatus.IDLE
                   ? 'bg-gradient-to-r from-[#ffd700] via-[#ffed4a] to-[#ffd700] text-black hover:shadow-lg hover:shadow-[#ffd700]/20 hover:scale-[1.02]'
                   : 'bg-gray-600/50 text-gray-400 cursor-not-allowed'
               }`}
@@ -271,13 +292,38 @@ export default function Home() {
                   ? 'WRONG NETWORK'
                   : !amount || parseFloat(amount) <= 0
                   ? 'ENTER AMOUNT'
+                  : swapStatus !== SwapStatus.IDLE
+                  ? statusMessage
                   : 'SWAP NOW'
                 }
               </span>
-              {isConnected && !chainWarning && amount && parseFloat(amount) > 0 && (
+              {isConnected && !chainWarning && amount && parseFloat(amount) > 0 && swapStatus === SwapStatus.IDLE && (
                 <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#ffd700] via-[#ffed4a] to-[#ffd700] opacity-50 blur-lg transition-opacity duration-300 hover:opacity-100"></div>
               )}
             </button>
+
+            {/* Status Message */}
+            {swapStatus !== SwapStatus.IDLE && swapStatus !== SwapStatus.ERROR && (
+              <div className="mt-4 p-4 rounded-lg bg-gray-800/50 border border-gray-700">
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
+                  <p className="text-sm text-gray-300">{statusMessage}</p>
+                </div>
+                {swapStatus === SwapStatus.WAITING_FOR_COMPLETION && (
+                  <p className="mt-2 text-xs text-gray-400">
+                    Your tokens are safely locked in escrow. The cross-chain swap is being processed. 
+                    This can take a few minutes to complete.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Error Message */}
+            {swapError && (
+              <div className="mt-4 p-4 rounded-lg bg-red-900/20 border border-red-800">
+                <p className="text-sm text-red-400">{swapError}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
