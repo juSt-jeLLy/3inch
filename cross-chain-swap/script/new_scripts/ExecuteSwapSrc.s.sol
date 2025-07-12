@@ -2,6 +2,7 @@
 pragma solidity 0.8.23;
 
 import "forge-std/Script.sol";
+import "forge-std/console.sol";
 import "../../contracts/EscrowSrc.sol";
 import "../../contracts/interfaces/IBaseEscrow.sol";
 import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
@@ -14,7 +15,7 @@ contract ExecuteSwapSrc is Script {
     using TimelocksLib for Timelocks;
 
     // Sepolia addresses - our deployed escrow
-    address constant ESCROW_SRC = 0x8bCbA2B582677139e13848abd98deB18FE773f4c;
+    address constant ESCROW_SRC = 0x7E1b2371a2436b6a254f63FbFd42C5F747bE15F3;  // Updated to our new deployed address
 
     // Addresses and private keys
     address constant MAKER = 0xadA662b479c52d95f19881cd7dCDD6FB7577Ee27;
@@ -22,25 +23,25 @@ contract ExecuteSwapSrc is Script {
     address constant TAKER = 0x4207ebd97F999F142fFD3696dD76A61193b23e89;
 
     function run() external {
-        // Set timelocks
-        CrossChainTestLib.SrcTimelocks memory srcTimelocks = CrossChainTestLib.SrcTimelocks({
-            withdrawal: 3600, // 1 hour
-            publicWithdrawal: 7200, // 2 hours
-            cancellation: 10800, // 3 hours
-            publicCancellation: 14400 // 4 hours
-        });
+        // Set timelocks with exact values from deployment
+        uint256 deploymentTime = block.timestamp - 90;  // Set deployment time 90 seconds ago
+        uint256 withdrawal = 60;  // 1 minute for private withdrawal
+        uint256 publicWithdrawal = 3600;  // 1 hour for public withdrawal
+        uint256 cancellation = 86400;  // 24 hours for cancellation
+        uint256 publicCancellation = 172800;  // 48 hours for public cancellation
 
-        CrossChainTestLib.DstTimelocks memory dstTimelocks = CrossChainTestLib.DstTimelocks({
-            withdrawal: 3600, // 1 hour
-            publicWithdrawal: 7200, // 2 hours
-            cancellation: 10800 // 3 hours
-        });
-
-        (Timelocks timelocksSrc, ) = CrossChainTestLib.setTimelocks(srcTimelocks, dstTimelocks);
+        // Pack timelocks into a uint256
+        uint256 timelockData = (deploymentTime << 224) | 
+                              (withdrawal << 192) | 
+                              (publicWithdrawal << 160) | 
+                              (cancellation << 128) |
+                              (publicCancellation << 96);
+        
+        Timelocks timelocksSrc = Timelocks.wrap(timelockData);
 
         // Create escrow immutables
-        bytes32 orderHash = 0x9157d5e77039a77d1d8c7864ead847f3f5a2076a0a845a7622b81d62a36061d4;
-        bytes32 secret = bytes32("secret"); // Same secret used on both chains
+        bytes32 orderHash = 0x89302931f6225e6e605f0aa3bd0d19dd55a437526813cc7f8237c1c30a07ab60;
+        bytes32 secret = bytes32("secret");
         bytes32 hashlock = keccak256(abi.encodePacked(secret));
         uint256 amount = 0.01 ether;
         uint256 safetyDeposit = 0.01 ether;
@@ -55,6 +56,47 @@ contract ExecuteSwapSrc is Script {
             safetyDeposit: safetyDeposit,
             timelocks: timelocksSrc
         });
+
+        // Debug timelocks and timing
+        console.log("\n=== Timelock Debug Information ===");
+        console.log("Deployment time:", deploymentTime);
+        console.log("Current block time:", block.timestamp);
+        
+        uint256 withdrawalStart = timelocksSrc.get(TimelocksLib.Stage.SrcWithdrawal);
+        uint256 publicWithdrawalStart = timelocksSrc.get(TimelocksLib.Stage.SrcPublicWithdrawal);
+        uint256 cancellationStart = timelocksSrc.get(TimelocksLib.Stage.SrcCancellation);
+        uint256 publicCancellationStart = timelocksSrc.get(TimelocksLib.Stage.SrcPublicCancellation);
+        
+        console.log("\nTimelock Windows:");
+        console.log("Private Withdrawal starts at:", withdrawalStart);
+        console.log("Public Withdrawal starts at:", publicWithdrawalStart);
+        console.log("Private Cancellation starts at:", cancellationStart);
+        console.log("Public Cancellation starts at:", publicCancellationStart);
+        
+        console.log("\nTime until windows:");
+        if (block.timestamp < withdrawalStart) {
+            console.log("Time until private withdrawal:", withdrawalStart - block.timestamp, "seconds");
+        } else {
+            console.log("Private withdrawal window is active");
+        }
+        
+        if (block.timestamp < publicWithdrawalStart) {
+            console.log("Time until public withdrawal:", publicWithdrawalStart - block.timestamp, "seconds");
+        } else {
+            console.log("Public withdrawal window is active");
+        }
+        
+        if (block.timestamp < cancellationStart) {
+            console.log("Time until private cancellation:", cancellationStart - block.timestamp, "seconds");
+        } else {
+            console.log("Private cancellation window is active");
+        }
+
+        // Ensure we're in the withdrawal window
+        require(block.timestamp >= withdrawalStart, "Too early for withdrawal");
+        require(block.timestamp < cancellationStart, "Too late for withdrawal");
+
+        console.log("\nExecuting withdrawal...");
         
         vm.startBroadcast(MAKER_PRIVATE_KEY);
 
@@ -63,7 +105,7 @@ contract ExecuteSwapSrc is Script {
 
         vm.stopBroadcast();
 
-        console.log("Withdrawal executed on source chain");
+        console.log("Withdrawal executed successfully!");
         console.log("Secret used:", vm.toString(secret));
         console.log("Hashlock:", vm.toString(hashlock));
     }

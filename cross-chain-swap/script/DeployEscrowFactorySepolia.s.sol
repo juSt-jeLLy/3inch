@@ -9,7 +9,7 @@ import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"
 contract DeployEscrowFactorySepolia is Script {
     uint32 public constant RESCUE_DELAY = 691200; // 8 days
     
-    address public constant LOP = 0x111111125421cA6dc452d289314280a0f8842A65; // All chains
+    address public constant LOP = 0x7089d6f042bFD6B06a9d1Df08Dd4005c29682799; // Sepolia Limit Order Protocol
     address public constant ACCESS_TOKEN = 0xACCe550000159e70908C0499a1119D04e7039C28; // All chains
 
     mapping(uint256 => address) public FEE_TOKEN; // solhint-disable-line var-name-mixedcase
