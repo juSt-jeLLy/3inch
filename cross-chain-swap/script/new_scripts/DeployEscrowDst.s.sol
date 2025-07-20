@@ -23,27 +23,28 @@ contract DeployEscrowDst is Script {
     address constant TAKER = 0x4207ebd97F999F142fFD3696dD76A61193b23e89;
     uint256 constant TAKER_PRIVATE_KEY = 0x1d02f466767e86d82b6c647fc7be69dc1bc98931a99ac9666d8b591bb0cc1e66;
 
+    // Order details from SignOrder.s.sol output
+    bytes32 constant ORDER_HASH = 0x550895b96dd1f2f9465b05a36bb5d7af052b02ff1b3172563a25671590d96818;
+    bytes32 constant HASHLOCK = 0x65462b0520ef7d3df61b9992ed3bea0c56ead753be7c8b3614e0ce01e4cac41b;
+
     function run() external {
         // Set timelocks
         CrossChainTestLib.SrcTimelocks memory srcTimelocks = CrossChainTestLib.SrcTimelocks({
             withdrawal: 60, // 1 minute
-            publicWithdrawal: 120, // 2 minutes
-            cancellation: 180, // 3 minutes
-            publicCancellation: 240 // 4 minutes
+            publicWithdrawal: 3600, // 1 hour
+            cancellation: 82800, // 23 hours
+            publicCancellation: 86400 // 24 hours
         });
 
         CrossChainTestLib.DstTimelocks memory dstTimelocks = CrossChainTestLib.DstTimelocks({
             withdrawal: 60, // 1 minute
-            publicWithdrawal: 120, // 2 minutes
-            cancellation: 180 // 3 minutes
+            publicWithdrawal: 3600, // 1 hour
+            cancellation: 39600 // 11 hours
         });
 
         (, Timelocks timelocksDst) = CrossChainTestLib.setTimelocks(srcTimelocks, dstTimelocks);
 
         // Create escrow immutables
-        bytes32 orderHash = 0x3545ec158819fdd4a6e8d907d395f4202ab9fdd22dcfa1e7d4799a5d34b8e711;
-        bytes32 secret = bytes32("secret");
-        bytes32 hashlock = keccak256(abi.encodePacked(secret));
         uint256 amount = 0.01 ether;
         uint256 safetyDeposit = 0.01 ether;
 
@@ -51,23 +52,34 @@ contract DeployEscrowDst is Script {
         timelocksDst = timelocksDst.setDeployedAt(block.timestamp);
 
         IBaseEscrow.Immutables memory immutables = IBaseEscrow.Immutables({
-            orderHash: orderHash,
+            orderHash: ORDER_HASH,
             amount: amount,
             maker: Address.wrap(uint160(MAKER)),
             taker: Address.wrap(uint160(TAKER)),
             token: Address.wrap(uint160(0)), // ETH
-            hashlock: hashlock,
+            hashlock: HASHLOCK,
             safetyDeposit: safetyDeposit,
             timelocks: timelocksDst
         });
 
         // Calculate source chain cancellation timestamp (must be greater than destination cancellation)
-        uint256 srcCancellationTimestamp = block.timestamp + 240; // 4 minutes (same as source publicCancellation)
+        uint256 srcCancellationTimestamp = block.timestamp + 86400; // 24 hours (same as source publicCancellation)
 
-        // Log timestamps
+        // Log deployment details
+        console.log("\n=== Deployment Details ===");
         console.log("Current timestamp:", block.timestamp);
         console.log("Withdrawal timelock:", timelocksDst.get(TimelocksLib.Stage.DstWithdrawal));
+        console.log("Public withdrawal timelock:", timelocksDst.get(TimelocksLib.Stage.DstPublicWithdrawal));
+        console.log("Cancellation timelock:", timelocksDst.get(TimelocksLib.Stage.DstCancellation));
         console.log("Source cancellation timestamp:", srcCancellationTimestamp);
+
+        // Log escrow details
+        console.log("\n=== Escrow Details ===");
+        console.log("Order hash:", vm.toString(ORDER_HASH));
+        console.log("Hashlock:", vm.toString(HASHLOCK));
+        console.log("Amount:", amount);
+        console.log("Safety deposit:", safetyDeposit);
+        console.log("Total value:", amount + safetyDeposit);
         
         vm.startBroadcast(TAKER_PRIVATE_KEY);
 
@@ -76,8 +88,7 @@ contract DeployEscrowDst is Script {
 
         vm.stopBroadcast();
 
+        console.log("\n=== Success ===");
         console.log("Destination escrow created and funded");
-        console.log("Order hash:", vm.toString(orderHash));
-        console.log("Hashlock:", vm.toString(hashlock));
     }
 } 

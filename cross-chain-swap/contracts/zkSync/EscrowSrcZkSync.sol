@@ -15,3 +15,4 @@ contract EscrowSrcZkSync is EscrowSrc, EscrowZkSync {
         EscrowZkSync._validateImmutables(immutables);
     }
 }
+
